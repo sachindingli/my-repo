@@ -1,0 +1,20 @@
+{
+  "name": "supra-core",
+  "version": "1.0.0",
+  "description": "supra core package",
+  "main": "index.js",
+  "dependencies": {
+    "joi": "17.4.3",
+    "cookie-parser": "1.4.6",
+    "db-errors": "0.2.3",
+    "express": "4.17.1",
+    "morgan": "1.10.0",
+    "lru-cache": "6.0.0",
+    "pino": "7.5.1",
+    "pino-pretty": "7.2.0",
+    "serve-favicon": "2.5.0"
+  },
+  "devDependencies": {},
+  "author": "Sasha Zmts",
+  "license": "MIT"
+}
