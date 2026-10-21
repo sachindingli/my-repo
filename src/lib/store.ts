@@ -13,7 +13,7 @@
 // picked alongside any device/network detail.
 import fs from 'fs'
 import path from 'path'
-import { CANDIDATE_IDS } from './candidates'
+import { VOTE_OPTION_IDS } from './candidates'
 
 const REST_URL = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL
 const REST_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN
@@ -36,9 +36,14 @@ const K = {
 export type Results = { counts: Record<string, number>; total: number }
 export type VoteOutcome = {
   ok: boolean
-  reason?: 'already_voted' | 'invalid_candidate' | 'invalid_voter'
+  reason?: 'already_voted' | 'invalid_candidate' | 'invalid_voter' | 'ip_limit'
   results: Results
 }
+
+// Max votes allowed from a single IP (network). Caps mass voting from one
+// machine. NOTE: in India many real users share one carrier/NAT IP, so keep
+// this generous enough not to block a genuinely shared village network.
+const IP_VOTE_LIMIT = Math.max(1, Number(process.env.IP_VOTE_LIMIT) || 8)
 export type VoteInput = {
   candidateId: string
   voterId: string
@@ -67,7 +72,7 @@ export type AdminData = {
 
 function emptyCounts(): Record<string, number> {
   const c: Record<string, number> = {}
-  for (const id of CANDIDATE_IDS) c[id] = 0
+  for (const id of VOTE_OPTION_IDS) c[id] = 0
   return c
 }
 function totalOf(counts: Record<string, number>): number {
@@ -110,6 +115,14 @@ async function redisResults(): Promise<Results> {
 async function redisVote(i: VoteInput): Promise<VoteOutcome> {
   const [added] = await pipeline([['SADD', K.voters, i.voterId]])
   if (Number(added) === 0) return { ok: false, reason: 'already_voted', results: await redisResults() }
+
+  // Per-IP cap: block mass voting from one network.
+  const ipKey = `ipv:${i.ipHash}`
+  const [ipCount] = await pipeline([['INCR', ipKey]])
+  if (Number(ipCount) === 1) await pipeline([['EXPIRE', ipKey, 604800]])
+  if (Number(ipCount) > IP_VOTE_LIMIT) {
+    return { ok: false, reason: 'ip_limit', results: await redisResults() }
+  }
 
   const batch: (string | number)[][] = [
     ['HINCRBY', K.counts, i.candidateId, 1],
@@ -178,6 +191,7 @@ type FileData = {
   counts: Record<string, number>
   voters: string[]
   ipHashes: string[]
+  ipCounts: Record<string, number>
   dupip: number
   device: Record<string, number>
   os: Record<string, number>
@@ -186,11 +200,12 @@ type FileData = {
   lang: Record<string, number>
   timeHour: Record<string, number>
   messages: { text: string; ts: number }[]
+  closed?: boolean
 }
 
 function readFile(): FileData {
   const base: FileData = {
-    counts: emptyCounts(), voters: [], ipHashes: [], dupip: 0,
+    counts: emptyCounts(), voters: [], ipHashes: [], ipCounts: {}, dupip: 0,
     device: {}, os: {}, browser: {}, net: {}, lang: {}, timeHour: {}, messages: [],
   }
   try {
@@ -216,6 +231,11 @@ function fileVote(i: VoteInput): VoteOutcome {
   if (d.voters.includes(i.voterId)) {
     return { ok: false, reason: 'already_voted', results: { counts: d.counts, total: totalOf(d.counts) } }
   }
+  const ipUsed = (d.ipCounts[i.ipHash] || 0) + 1
+  if (ipUsed > IP_VOTE_LIMIT) {
+    return { ok: false, reason: 'ip_limit', results: { counts: d.counts, total: totalOf(d.counts) } }
+  }
+  d.ipCounts[i.ipHash] = ipUsed
   d.voters.push(i.voterId)
   bump(d.counts, i.candidateId)
   bump(d.device, i.device)
@@ -249,7 +269,7 @@ export async function getResults(): Promise<Results> {
 }
 
 export async function castVote(i: VoteInput): Promise<VoteOutcome> {
-  if (!CANDIDATE_IDS.includes(i.candidateId)) {
+  if (!VOTE_OPTION_IDS.includes(i.candidateId)) {
     return { ok: false, reason: 'invalid_candidate', results: await getResults() }
   }
   if (!i.voterId || i.voterId.length < 8 || i.voterId.length > 100) {
@@ -264,6 +284,24 @@ export async function getAdminData(): Promise<AdminData> {
 
 // A voter who has already voted may append an extra comment. It is stored in the
 // same messages list (still NOT linked to their candidate choice).
+export async function getPollClosed(): Promise<boolean> {
+  if (hasRemoteStore) {
+    const [v] = await pipeline([['GET', 'poll:closed']])
+    return v === '1' || v === 1
+  }
+  return !!readFile().closed
+}
+
+export async function setPollClosed(closed: boolean): Promise<void> {
+  if (hasRemoteStore) {
+    await pipeline([['SET', 'poll:closed', closed ? '1' : '0']])
+    return
+  }
+  const d = readFile()
+  d.closed = closed
+  writeFile(d)
+}
+
 export async function addComment(
   voterId: string,
   message: string,

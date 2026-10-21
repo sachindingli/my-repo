@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import styles from './admin.module.css'
-import { CANDIDATES } from '@/lib/candidates'
+import { CANDIDATES, NOTA } from '@/lib/candidates'
 
 type AdminData = {
   counts: Record<string, number>
@@ -192,6 +192,21 @@ export default function Admin() {
               </div>
             )
           })}
+          {(() => {
+            const n = data.counts[NOTA.id] || 0
+            const pct = data.total > 0 ? Math.round((n / data.total) * 100) : 0
+            return (
+              <div className={styles.statRow}>
+                <span className={styles.statLabel}>{NOTA.name}</span>
+                <span className={styles.statBar}>
+                  <span className={styles.statFill} style={{ width: `${pct}%`, background: NOTA.accent }} />
+                </span>
+                <span className={styles.statNum}>
+                  {n} · {pct}%
+                </span>
+              </div>
+            )
+          })()}
         </div>
 
         <div className={styles.grid}>

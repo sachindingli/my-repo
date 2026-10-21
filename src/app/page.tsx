@@ -2,25 +2,26 @@
 
 import { useEffect, useState } from 'react'
 import styles from './page.module.css'
-import { CANDIDATES } from '@/lib/candidates'
+import { CANDIDATES, NOTA, VOTE_OPTIONS } from '@/lib/candidates'
 import { winChances } from '@/lib/forecast'
 
 type Lang = 'hi' | 'en'
-type Results = { counts: Record<string, number>; total: number; persistent?: boolean }
+type Results = { counts: Record<string, number>; total: number; persistent?: boolean; closed?: boolean }
 type Msg = { text: string; ts: number }
 
 const VOTER_KEY = 'deengli_voter_id'
 const VOTED_KEY = 'deengli_voted_for'
 const LANG_KEY = 'deengli_lang'
 const MSGS_KEY = 'deengli_my_messages'
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ''
 
 const T = {
   hi: {
     chooseLang: 'भाषा चुनें',
     chooseLangSub: 'Please choose your language',
-    panchayat: 'ग्राम पंचायत देंगली',
+    panchayat: 'ग्राम पंचायत डिंगली',
     title: 'सरपंच चुनाव',
-    subtitle: 'देंगली गाँव · जनमत संग्रह · 2026',
+    subtitle: 'डिंगली गाँव · जनमत संग्रह · 2026',
     privacyTitle: 'गुप्त मतदान',
     privacy:
       'हम आपका नाम या मोबाइल नंबर नहीं पूछते। आपने किसे वोट दिया यह आपकी पहचान या डिवाइस के साथ कभी नहीं जोड़ा जाता। मतदान को निष्पक्ष रखने के लिए बुनियादी तकनीकी जानकारी (ब्राउज़र, डिवाइस, नेटवर्क) और IP का सुरक्षित रूप दर्ज किया जाता है। एक डिवाइस से एक वोट।',
@@ -37,6 +38,12 @@ const T = {
     leading: 'आगे',
     refresh: 'ताज़ा करें',
     already: 'इस डिवाइस से पहले ही वोट दिया जा चुका है।',
+    desktopBlocked: 'कंप्यूटर/लैपटॉप से वोट बंद है। कृपया अपने मोबाइल फ़ोन से वोट करें।',
+    ipLimit: 'इस नेटवर्क से बहुत वोट आ चुके हैं। कृपया बाद में या किसी और नेटवर्क से कोशिश करें।',
+    captchaRequired: 'कृपया नीचे दी गई जाँच (मैं रोबोट नहीं हूँ) पूरी करें।',
+    votingClosed: 'मतदान बंद हो चुका है।',
+    closedBanner: 'मतदान बंद',
+    unreliableNote: 'नोट: इस poll में बहुत सारे स्वतः/नकली वोट आए थे, इसलिए ये आँकड़े भरोसेमंद नतीजा नहीं हैं।',
     genericErr: 'कुछ गड़बड़ हुई, फिर कोशिश करें।',
     networkErr: 'नेटवर्क की समस्या — कनेक्शन जाँचें।',
     disclaimer: 'अनौपचारिक जनमत संग्रह — यह आधिकारिक ग्राम पंचायत चुनाव नहीं है।',
@@ -77,6 +84,12 @@ const T = {
     leading: 'leading',
     refresh: 'Refresh',
     already: 'This device has already voted.',
+    desktopBlocked: 'Voting from computer/laptop is disabled. Please vote from your mobile phone.',
+    ipLimit: 'Too many votes from this network already. Please try later or from another network.',
+    captchaRequired: 'Please complete the "I am not a robot" check below.',
+    votingClosed: 'Voting is closed.',
+    closedBanner: 'Voting closed',
+    unreliableNote: 'Note: this poll received many automated/fake votes, so these numbers are not a reliable result.',
     genericErr: 'Something went wrong, please try again.',
     networkErr: 'Network problem — check your connection.',
     disclaimer: 'Unofficial community poll — this is not the official Gram Panchayat election.',
@@ -153,6 +166,7 @@ export default function Home() {
   const [comment, setComment] = useState('')
   const [addingComment, setAddingComment] = useState(false)
   const [commentDone, setCommentDone] = useState(false)
+  const [captcha, setCaptcha] = useState('')
 
   const t = T[lang]
 
@@ -174,6 +188,39 @@ export default function Home() {
     void fetchResults()
   }, [])
 
+  // Load + render the Cloudflare Turnstile CAPTCHA widget (only if configured).
+  useEffect(() => {
+    if (!TURNSTILE_SITE_KEY || showResults || votedFor) return
+    if (!document.getElementById('cf-turnstile-script')) {
+      const s = document.createElement('script')
+      s.id = 'cf-turnstile-script'
+      s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js'
+      s.async = true
+      s.defer = true
+      document.head.appendChild(s)
+    }
+    const iv = setInterval(() => {
+      const w = (window as unknown as {
+        turnstile?: { render: (el: string, opts: Record<string, unknown>) => void }
+      }).turnstile
+      const el = document.getElementById('cf-turnstile-box')
+      if (w && el && !el.hasChildNodes()) {
+        w.render('#cf-turnstile-box', {
+          sitekey: TURNSTILE_SITE_KEY,
+          callback: (tok: string) => setCaptcha(tok),
+          'error-callback': () => setCaptcha(''),
+          'expired-callback': () => setCaptcha(''),
+        })
+        clearInterval(iv)
+      }
+    }, 300)
+    const stop = setTimeout(() => clearInterval(iv), 15000)
+    return () => {
+      clearInterval(iv)
+      clearTimeout(stop)
+    }
+  }, [showResults, votedFor])
+
   function pickLang(l: Lang) {
     setLang(l)
     setLangChosen(true)
@@ -187,7 +234,11 @@ export default function Home() {
   async function fetchResults() {
     try {
       const res = await fetch('/api/vote', { cache: 'no-store' })
-      if (res.ok) setResults(await res.json())
+      if (res.ok) {
+        const data = await res.json()
+        setResults(data)
+        if (data.closed) setShowResults(true)
+      }
     } catch {
       /* ignore */
     }
@@ -197,6 +248,10 @@ export default function Home() {
     if (submitting || votedFor) return
     if (!selected) {
       setNotice(t.pickFirst)
+      return
+    }
+    if (TURNSTILE_SITE_KEY && !captcha) {
+      setNotice(t.captchaRequired)
       return
     }
     setNotice(null)
@@ -211,6 +266,7 @@ export default function Home() {
           lang,
           networkType: networkType(),
           message,
+          turnstileToken: captcha,
         }),
       })
       const data = await res.json()
@@ -233,6 +289,16 @@ export default function Home() {
         setResults(data.results)
         setShowResults(true)
         setNotice(t.already)
+      } else if (data.reason === 'desktop_blocked') {
+        setNotice(t.desktopBlocked)
+      } else if (data.reason === 'ip_limit') {
+        setNotice(t.ipLimit)
+      } else if (data.reason === 'captcha_required' || data.reason === 'captcha_failed') {
+        setNotice(t.captchaRequired)
+        setCaptcha('')
+      } else if (data.reason === 'closed') {
+        setShowResults(true)
+        setNotice(t.votingClosed)
       } else {
         setNotice(t.genericErr)
       }
@@ -277,7 +343,7 @@ export default function Home() {
       ? CANDIDATES.reduce((b, c) => ((counts[c.id] || 0) > (counts[b.id] || 0) ? c : b), CANDIDATES[0])
       : null
   const chances = winChances(counts)
-  const votedCandidate = CANDIDATES.find((c) => c.id === votedFor) || null
+  const votedCandidate = VOTE_OPTIONS.find((c) => c.id === votedFor) || null
 
   return (
     <main className={styles.page}>
@@ -348,6 +414,24 @@ export default function Home() {
               </button>
             ))}
 
+            <button
+              className={`${styles.card} ${styles.notaCard} ${selected === NOTA.id ? styles.cardSelected : ''}`}
+              style={{ ['--accent' as string]: NOTA.accent }}
+              onClick={() => setSelected(NOTA.id)}
+              disabled={submitting}
+              aria-pressed={selected === NOTA.id}
+            >
+              <span className={styles.symbol} aria-hidden="true">
+                {NOTA.symbol}
+              </span>
+              <span className={styles.names}>
+                <span className={styles.nameHi}>{lang === 'hi' ? NOTA.nameHi : NOTA.name}</span>
+              </span>
+              <span className={styles.radio} aria-hidden="true">
+                {selected === NOTA.id ? '●' : '○'}
+              </span>
+            </button>
+
             <label className={styles.msgLabel} htmlFor="msg">
               {t.messageLabel}
             </label>
@@ -362,6 +446,8 @@ export default function Home() {
               disabled={submitting}
             />
 
+            {TURNSTILE_SITE_KEY && <div id="cf-turnstile-box" className={styles.captcha} />}
+
             <button className={styles.submit} onClick={submitVote} disabled={submitting || !selected}>
               {submitting ? t.submitting : t.submit}
             </button>
@@ -372,6 +458,12 @@ export default function Home() {
           </section>
         ) : (
           <section aria-label="Results" className={styles.results}>
+            {results?.closed && (
+              <div className={styles.closedBanner}>
+                <strong>🔒 {t.closedBanner}</strong>
+                <span className={styles.unreliable}>{t.unreliableNote}</span>
+              </div>
+            )}
             {leader && (
               <div className={styles.winner} style={{ ['--accent' as string]: leader.accent }}>
                 <span className={styles.crown} aria-hidden="true">
@@ -419,6 +511,27 @@ export default function Home() {
                 </div>
               )
             })}
+            {(() => {
+              const n = counts[NOTA.id] || 0
+              const pct = total > 0 ? Math.round((n / total) * 100) : 0
+              return (
+                <div className={styles.row}>
+                  <div className={styles.rowTop}>
+                    <span className={styles.rowName}>
+                      <span aria-hidden="true">{NOTA.symbol}</span>{' '}
+                      {lang === 'hi' ? NOTA.nameHi : NOTA.name}
+                      {votedFor === NOTA.id && <span className={styles.youTag}>{t.yourVote}</span>}
+                    </span>
+                    <span className={styles.rowPct}>
+                      {pct}% · {n}
+                    </span>
+                  </div>
+                  <div className={styles.bar}>
+                    <div className={styles.fill} style={{ width: `${pct}%`, background: NOTA.accent }} />
+                  </div>
+                </div>
+              )
+            })()}
             <p className={styles.forecastNote}>{t.forecastNote}</p>
             <button className={styles.refresh} onClick={() => void fetchResults()}>
               {t.refresh}

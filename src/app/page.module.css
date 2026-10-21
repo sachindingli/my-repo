@@ -127,6 +127,13 @@
   box-shadow: 0 0 0 2px var(--accent), 0 6px 18px rgba(42, 33, 24, 0.12);
   background: color-mix(in srgb, var(--accent) 8%, var(--surface));
 }
+.notaCard {
+  border-style: dashed;
+  margin-top: 4px;
+}
+.notaCard .nameHi {
+  font-size: 1rem;
+}
 .radio {
   flex: none;
   font-size: 1.2rem;
@@ -154,6 +161,13 @@
 .msgBox:focus-visible {
   outline: 2px solid var(--marigold);
   outline-offset: 1px;
+}
+
+.captcha {
+  margin-top: 4px;
+  display: flex;
+  justify-content: center;
+  min-height: 65px;
 }
 
 .submit {
@@ -353,6 +367,25 @@
 }
 .modalBtn:last-child {
   background: #1864ab;
+}
+
+.closedBanner {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: #fff8e1;
+  border: 1px solid #ffe08a;
+  color: #7a5900;
+  border-radius: 14px;
+  padding: 14px 16px;
+  text-align: center;
+}
+.closedBanner strong {
+  font-size: 1.1rem;
+}
+.unreliable {
+  font-size: 0.8rem;
+  line-height: 1.45;
 }
 
 /* Winner / leading banner */
