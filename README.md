@@ -9,12 +9,28 @@ tally.
 > **This is an unofficial community poll, not the official Gram Panchayat
 > election.** The page says so clearly to voters.
 
+The site is bilingual (**Hindi / English** toggle), voters can leave an optional
+message, and there is a password-protected **admin dashboard** at `/admin`.
+
 ## What it does (and does not) collect
 
-- **Collects:** only the vote counts, plus a random id generated in each voter's
-  browser that is used purely to stop the same browser voting twice.
-- **Does NOT collect:** name, phone number, email, IP address, SIM/network, or
-  device model. Nothing personal is asked for or stored.
+- **Collects:** vote counts; a random id generated in each voter's browser (to
+  stop the same browser voting twice); **aggregate** device / OS / browser /
+  network-type / language buckets; a one-way **hashed** IP (for distinct-network
+  counts and duplicate-vote detection); and optional free-text messages.
+- **Does NOT collect:** name, phone number, email, raw IP, SIM/carrier, or exact
+  device model. **It never stores which candidate an individual chose alongside
+  their device/network details or message** — the ballot stays secret.
+
+> A browser cannot read a phone number, SIM, or carrier name without an installed
+> app granting permission, so those are not collected regardless.
+
+### Admin dashboard (`/admin`)
+
+Open `/admin`, enter `ADMIN_PASSWORD`, and you get: live tallies, turnout,
+distinct-network count, a repeat-network (possible duplicate) flag, aggregate
+device/OS/browser/network/language breakdowns, votes-over-time, and the messages
+list. All figures are aggregate — there is no per-voter identity log by design.
 
 ### One-vote-per-device — honest limits
 
@@ -54,6 +70,8 @@ the local file. Steps:
    | --- | --- |
    | `UPSTASH_REDIS_REST_URL` | your Upstash REST URL |
    | `UPSTASH_REDIS_REST_TOKEN` | your Upstash REST token |
+   | `ADMIN_PASSWORD` | a strong password for `/admin` |
+   | `IP_HASH_SALT` | any random string (optional but recommended) |
 
    (`KV_REST_API_URL` / `KV_REST_API_TOKEN` also work if you use Vercel KV.)
 4. **Redeploy.** Vercel gives you a link like `https://your-poll.vercel.app` —
@@ -68,9 +86,12 @@ a display symbol, and an accent colour.
 
 ## How it is built
 
-- `src/app/page.tsx` — the voting page (voting cards → live results).
+- `src/app/page.tsx` — the voting page (select → optional message → submit → results).
+- `src/app/admin/page.tsx` — password-protected admin dashboard.
 - `src/app/api/vote/route.ts` — `GET` returns the tally, `POST` records a vote.
+- `src/app/api/admin/route.ts` — `GET` returns aggregate stats (needs the password).
 - `src/lib/store.ts` — storage: Upstash/Vercel KV in production, local file in dev.
+- `src/lib/analyze.ts` — derives aggregate device/network signals; hashes IPs.
 - `src/lib/candidates.ts` — the candidate list.
 
 ## Resetting the poll

@@ -22,6 +22,29 @@
   max-width: 480px;
 }
 
+.langRow {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.langBtn {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 5px 14px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+.langActive {
+  background: var(--marigold);
+  border-color: var(--marigold);
+  color: #fff;
+}
+
 .header {
   text-align: center;
   margin-bottom: 18px;
@@ -99,6 +122,58 @@
 .card:disabled {
   opacity: 0.6;
   cursor: default;
+}
+.cardSelected {
+  box-shadow: 0 0 0 2px var(--accent), 0 6px 18px rgba(42, 33, 24, 0.12);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+}
+.radio {
+  flex: none;
+  font-size: 1.2rem;
+  color: var(--accent);
+}
+
+.msgLabel {
+  margin-top: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.msgBox {
+  width: 100%;
+  resize: vertical;
+  min-height: 56px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 0.9rem;
+  background: var(--surface);
+  color: var(--ink);
+}
+.msgBox:focus-visible {
+  outline: 2px solid var(--marigold);
+  outline-offset: 1px;
+}
+
+.submit {
+  margin-top: 4px;
+  width: 100%;
+  background: var(--marigold);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 15px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  cursor: pointer;
+  font-family: inherit;
+  box-shadow: 0 4px 14px rgba(232, 89, 12, 0.3);
+}
+.submit:disabled {
+  opacity: 0.5;
+  cursor: default;
+  box-shadow: none;
 }
 
 .symbol {

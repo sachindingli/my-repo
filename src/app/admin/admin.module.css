@@ -1,0 +1,258 @@
+.page {
+  --sand: #f6efe3;
+  --ink: #2a2118;
+  --muted: #6d6252;
+  --line: #e4d9c6;
+  --surface: #fffdf8;
+  --marigold: #e8590c;
+  min-height: 100%;
+  padding: 24px 16px 48px;
+  background: var(--sand);
+  color: var(--ink);
+  font-family: ui-sans-serif, system-ui, 'Segoe UI', Roboto, 'Noto Sans Devanagari', sans-serif;
+}
+
+/* Login */
+.loginShell {
+  max-width: 360px;
+  margin: 10vh auto 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.loginTitle {
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+.loginHint {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.input {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  font: inherit;
+  background: var(--sand);
+  color: var(--ink);
+}
+.loginBtn {
+  background: var(--marigold);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+}
+.loginBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.error {
+  color: #a61e4d;
+  font-size: 0.85rem;
+}
+
+/* Dashboard */
+.shell {
+  max-width: 760px;
+  margin: 0 auto;
+}
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.title {
+  font-size: 1.6rem;
+  font-weight: 800;
+}
+.topActions {
+  display: flex;
+  gap: 8px;
+}
+.ghost {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 7px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+.warn {
+  font-size: 0.82rem;
+  color: #9a6700;
+  background: #fff8e1;
+  border: 1px solid #ffe08a;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 16px;
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.kpi {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.kpiNum {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--marigold);
+  font-variant-numeric: tabular-nums;
+}
+.kpiLabel {
+  font-size: 0.72rem;
+  color: var(--muted);
+  line-height: 1.2;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.panelTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.note,
+.empty {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.statRow {
+  display: grid;
+  grid-template-columns: minmax(70px, 34%) 1fr auto;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.statLabel {
+  font-size: 0.85rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.statLabelSmall {
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.lead {
+  color: var(--marigold);
+}
+.statBar {
+  height: 10px;
+  background: #ece2d1;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.statFill {
+  display: block;
+  height: 100%;
+  background: var(--marigold);
+  border-radius: 999px;
+  min-width: 2px;
+}
+.statNum {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.msgList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.msgItem {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.msgText {
+  font-size: 0.9rem;
+  word-break: break-word;
+}
+.msgTime {
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.footerNote {
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-align: center;
+  margin-top: 20px;
+  line-height: 1.5;
+}
+
+@media (max-width: 480px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .kpiNum {
+    font-size: 1.4rem;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .page {
+    --sand: #17130d;
+    --ink: #f3ead9;
+    --muted: #a99a84;
+    --line: #342b20;
+    --surface: #211a12;
+  }
+  .statBar {
+    background: #2c2316;
+  }
+  .warn {
+    background: #2e2405;
+    border-color: #5c4a10;
+    color: #f2d479;
+  }
+}
