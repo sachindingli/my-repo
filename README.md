@@ -15,7 +15,7 @@ Next.js), so shoppers only ever see one website.
 
 - **Catalogue migrated from the old site**: 9 products / 23 sizes with the live prices and MRPs,
   252 photos, 164 reviews, 9 blog posts and the policy pages (`api/data/catalog.json`,
-  `api/uploads/`). Reviewer phone numbers were deliberately **not** copied.
+  `web/public/uploads/`). Reviewer phone numbers were deliberately **not** copied.
 - **Shop**: home, categories, search, product pages with a size picker, cart, checkout
   (Cash on Delivery and Razorpay), order confirmation, order tracking, blog, policies, contact.
 - **SEO**: Product schema (rating, price, stock) for Google rich results, breadcrumbs, FAQ and
@@ -55,19 +55,59 @@ cd api && npm test     # needs a separate test database: copy .env to .env.test 
 cd web && npm run lint && npm run build
 ```
 
-## Deploying
+## Deploying on Vercel
 
-1. **Database**: any managed PostgreSQL (Neon, Supabase, Railway, Render).
-2. **API**: a Node host with a persistent disk for `uploads/` (Railway, Render, a VPS).
-   Set the variables from `api/.env.example`, run `npm run db:migrate && npm run db:seed`, start with
-   `npm start`. Set `WEB_ORIGIN` to the shop's URL and a strong `JWT_SECRET`.
-3. **Storefront**: Vercel (or any Node host). Set `API_URL` to the API's URL and
-   `NEXT_PUBLIC_SITE_URL=https://hitkram.com`.
-4. **Razorpay**: add the key id/secret to the API, and create a webhook in the Razorpay dashboard
-   pointing to `https://<api-host>/api/payments/razorpay/webhook` for `payment.captured`,
-   `order.paid` and `payment.failed`, using `RAZORPAY_WEBHOOK_SECRET`.
-5. Point `hitkram.com` at the storefront and submit `https://hitkram.com/sitemap.xml` in Google
-   Search Console.
+Everything runs on one Vercel account as **two projects** from this repository:
+
+| Vercel project | Root directory | What it is |
+| --- | --- | --- |
+| `hitkram-api` | `api` | Node.js API (Express runs as a Vercel Function via `api/api/index.js`) |
+| `hitkram-web` | `web` | The shop and admin (Next.js) |
+
+Storage, added from the API project's **Storage** tab:
+
+- **Neon Postgres**: sets `DATABASE_URL` and `DATABASE_URL_UNPOOLED` automatically.
+- **Blob**: sets `BLOB_READ_WRITE_TOKEN` automatically, for photos uploaded in the admin.
+
+The migrated catalogue photos are in `web/public/uploads` and are served from Vercel's CDN.
+
+On every API deploy, `vercel-build` runs `prisma migrate deploy` and the seed, which only adds
+missing rows (it never overwrites edits made in the admin).
+
+### 1. API project
+
+1. Vercel → **Add New → Project** → import this repository → **Root Directory: `api`**.
+2. Environment variables: `JWT_SECRET` (random, 32+ characters), `ADMIN_EMAIL`, `ADMIN_PASSWORD`,
+   `SHIPPING_FEE`, `FREE_SHIPPING_MIN`, `COD_ENABLED=true`, and `WEB_ORIGIN` (the shop's URL).
+3. Storage tab → connect **Neon** (Postgres) and **Blob**. Then **Redeploy**.
+4. Check `https://<api-project>.vercel.app/api/health` shows `{"ok":true}`.
+
+### 2. Shop project
+
+1. **Add New → Project** → same repository → **Root Directory: `web`**.
+2. Environment variables: `API_URL=https://<api-project>.vercel.app` and
+   `NEXT_PUBLIC_SITE_URL=https://hitkram.com` (use the `.vercel.app` URL until the domain is moved).
+3. Deploy. The API must be deployed first, because the shop pre-builds product pages from it.
+
+### 3. Domain
+
+Shop project → **Settings → Domains** → add `hitkram.com` and `www.hitkram.com`, then add the DNS
+records Vercel shows at your domain registrar (Hostinger). Set `NEXT_PUBLIC_SITE_URL` and the
+API's `WEB_ORIGIN` to `https://hitkram.com` and redeploy both. Submit
+`https://hitkram.com/sitemap.xml` in Google Search Console.
+
+### 4. Online payments (optional)
+
+Add `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` and `RAZORPAY_WEBHOOK_SECRET` to the API project.
+In the Razorpay dashboard, create a webhook to `https://<api-project>.vercel.app/api/payments/razorpay/webhook`
+for `payment.captured`, `order.paid` and `payment.failed`.
+
+### Notes
+
+- Vercel's Hobby plan is for non-commercial use; a shop needs the **Pro** plan.
+- Admin photo uploads are resized in the browser (max 1600 px, WebP) to stay under Vercel's request size limit.
+- Rate limits (orders, reviews, login) are per function instance on serverless; they slow down abuse but
+  are not a hard guarantee.
 
 ## Before launch: owner checklist
 

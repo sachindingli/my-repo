@@ -5,6 +5,22 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAdmin, useAdminData } from '@/components/admin/AdminShell';
 
+/** Resize to max 1600px and re-encode as WebP so uploads are small and the shop stays fast. */
+async function shrinkImage(file, max = 1600) {
+  try {
+    const bmp = await createImageBitmap(file);
+    const scale = Math.min(1, max / Math.max(bmp.width, bmp.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(bmp.width * scale);
+    canvas.height = Math.round(bmp.height * scale);
+    canvas.getContext('2d').drawImage(bmp, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise((r) => canvas.toBlob(r, 'image/webp', 0.85));
+    return blob ? new File([blob], file.name.replace(/\.\w+$/, '') + '.webp', { type: 'image/webp' }) : file;
+  } catch {
+    return file;
+  }
+}
+
 const EMPTY = {
   slug: '', name: '', nameHi: '', tagline: '', bullets: [], descriptionHtml: '', specs: [], metaTitle: '', metaDescription: '',
   isActive: true, isFeatured: false, categories: [], variants: [{ label: '', mrp: 0, price: 0, inStock: true, isDefault: true, images: [] }],
@@ -60,11 +76,15 @@ export default function ProductEditor({ params }) {
 
   async function upload(i, files) {
     if (!files?.length) return;
-    const fd = new FormData();
-    [...files].forEach((f) => fd.append('files', f));
+    setMsg({ ok: true, text: 'Uploading photos…' });
     try {
-      const { urls } = await api('/uploads', { method: 'POST', body: fd, raw: true });
-      setP((cur) => ({ ...cur, variants: cur.variants.map((x, j) => (j === i ? { ...x, images: [...x.images, ...urls] } : x)) }));
+      for (const file of files) {
+        const fd = new FormData();
+        fd.append('files', await shrinkImage(file));
+        const { urls } = await api('/uploads', { method: 'POST', body: fd, raw: true });
+        setP((cur) => ({ ...cur, variants: cur.variants.map((x, j) => (j === i ? { ...x, images: [...x.images, ...urls] } : x)) }));
+      }
+      setMsg({ ok: true, text: 'Photos added. Remember to save the product.' });
     } catch (e) {
       setMsg({ ok: false, text: e.message });
     }

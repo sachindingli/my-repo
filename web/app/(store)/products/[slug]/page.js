@@ -4,7 +4,7 @@ import ProductView from '@/components/ProductView';
 import ProductCard from '@/components/ProductCard';
 import ReviewForm from '@/components/ReviewForm';
 import { Breadcrumbs, JsonLd, Stars } from '@/components/ui';
-import { API_BASE, getLegacyProduct, getProduct, getProducts } from '@/lib/api';
+import { getLegacyProduct, getProduct, getProducts } from '@/lib/api';
 import { formatDate, lazyHtml } from '@/lib/format';
 import { SITE_URL, absoluteUrl } from '@/lib/site';
 
@@ -101,8 +101,8 @@ export default async function ProductPage({ params }) {
         }}
       />
       <Breadcrumbs items={crumbs} />
-      <Suspense fallback={<ProductView product={p} apiUrl={API_BASE} />}>
-        <ProductView product={p} apiUrl={API_BASE} readSizeFromUrl />
+      <Suspense fallback={<ProductView product={p} />}>
+        <ProductView product={p} readSizeFromUrl />
       </Suspense>
 
       <nav className="tabs" aria-label="Product sections">

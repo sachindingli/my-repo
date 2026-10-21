@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
@@ -228,24 +229,38 @@ admin.get(
 );
 
 // ---- Image uploads ----
+// On Vercel there is no permanent disk, so photos go to Vercel Blob when BLOB_READ_WRITE_TOKEN is set;
+// locally they are written to UPLOAD_DIR and served at /uploads.
+const IMAGE_EXT = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp' };
 const upload = multer({
-  storage: multer.diskStorage({
-    destination: UPLOAD_DIR,
-    filename: (req, file, cb) => {
-      const ext = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp' }[file.mimetype];
-      cb(null, `${Date.now()}${crypto.randomInt(1000, 9999)}${ext}`);
-    },
-  }),
-  limits: { fileSize: 5 * 1024 * 1024, files: 10 },
+  storage: multer.memoryStorage(),
+  // Vercel functions accept request bodies up to ~4.5 MB; the admin resizes photos before sending.
+  limits: { fileSize: 4 * 1024 * 1024, files: 10 },
   fileFilter: (req, file, cb) =>
-    ['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)
-      ? cb(null, true)
-      : cb(new HttpError(400, 'Only JPG, PNG or WebP images are allowed.')),
+    IMAGE_EXT[file.mimetype] ? cb(null, true) : cb(new HttpError(400, 'Only JPG, PNG or WebP images are allowed.')),
 });
 
-admin.post('/uploads', upload.array('files', 10), (req, res) => {
-  res.status(201).json({ urls: (req.files || []).map((f) => `/uploads/${f.filename}`) });
-});
+async function storeImage(file) {
+  const name = `${Date.now()}${crypto.randomInt(1000, 9999)}${IMAGE_EXT[file.mimetype]}`;
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    const { put } = await import('@vercel/blob');
+    const blob = await put(`products/${name}`, file.buffer, { access: 'public', contentType: file.mimetype });
+    return blob.url;
+  }
+  await mkdir(UPLOAD_DIR, { recursive: true });
+  await writeFile(path.join(UPLOAD_DIR, name), file.buffer);
+  return `/uploads/${name}`;
+}
+
+admin.post(
+  '/uploads',
+  upload.array('files', 10),
+  ah(async (req, res) => {
+    const urls = [];
+    for (const f of req.files || []) urls.push(await storeImage(f));
+    res.status(201).json({ urls });
+  }),
+);
 
 // ---- Reviews ----
 admin.get(

@@ -25,7 +25,7 @@ export function errorHandler(err, req, res, next) {
     return res.status(err.status).json({ error: err.message, ...(err.details && { details: err.details }) });
   }
   if (err?.name === 'MulterError') {
-    const msg = err.code === 'LIMIT_FILE_SIZE' ? 'Each image must be under 5 MB.' : 'Upload failed.';
+    const msg = err.code === 'LIMIT_FILE_SIZE' ? 'Each image must be under 4 MB.' : 'Upload failed.';
     return res.status(400).json({ error: msg });
   }
   if (err?.code === 'P2025') return res.status(404).json({ error: 'Not found' });

@@ -15,7 +15,7 @@ function SizeFromUrl({ onSize }) {
   return null;
 }
 
-export default function ProductView({ product, apiUrl, readSizeFromUrl = false }) {
+export default function ProductView({ product, readSizeFromUrl = false }) {
   const router = useRouter();
   const { add } = useCart();
   const initial = product.variants.find((v) => v.isDefault) || product.variants[0];
@@ -26,7 +26,6 @@ export default function ProductView({ product, apiUrl, readSizeFromUrl = false }
   const [showSticky, setShowSticky] = useState(false);
 
   const images = useMemo(() => (variant.images.length ? variant.images : product.variants.flatMap((v) => v.images)).slice(0, 10), [variant, product.variants]);
-  const src = (p) => (p.startsWith('http') ? p : `${apiUrl}${p}`);
 
   // Show the bottom "Add to cart" bar on phones only once the main buttons have scrolled out of view.
   useEffect(() => {
@@ -87,7 +86,7 @@ export default function ProductView({ product, apiUrl, readSizeFromUrl = false }
           {images[imageIndex] && (
             <Image
               key={images[imageIndex]}
-              src={src(images[imageIndex])}
+              src={images[imageIndex]}
               alt={`${product.name} ${variant.label}${imageIndex ? ` – photo ${imageIndex + 1}` : ''}`}
               fill
               sizes="(min-width: 900px) 560px, 100vw"
@@ -106,7 +105,7 @@ export default function ProductView({ product, apiUrl, readSizeFromUrl = false }
                 aria-label={`Show photo ${i + 1}`}
                 onClick={() => setImageIndex(i)}
               >
-                <Image src={src(im)} alt="" width={64} height={64} sizes="64px" />
+                <Image src={im} alt="" width={64} height={64} sizes="64px" />
               </button>
             ))}
           </div>

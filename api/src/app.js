@@ -23,6 +23,7 @@ export function createApp() {
 
   app.use(express.json({ limit: '1mb' }));
 
+  // Local development only: photos uploaded in the admin without Vercel Blob are kept on disk.
   app.use('/uploads', express.static(UPLOAD_DIR, { maxAge: '30d', immutable: true, fallthrough: false }));
 
   app.get(

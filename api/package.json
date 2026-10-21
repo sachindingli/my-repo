@@ -6,7 +6,7 @@
   "type": "module",
   "main": "src/index.js",
   "engines": {
-    "node": ">=20"
+    "node": ">=20.11"
   },
   "scripts": {
     "dev": "node --watch --env-file-if-exists=.env src/index.js",
@@ -15,10 +15,13 @@
     "db:migrate:dev": "prisma migrate dev",
     "db:seed": "node --env-file-if-exists=.env prisma/seed.js",
     "test": "node --env-file-if-exists=.env.test --test --test-concurrency=1 test/*.test.js",
-    "pretest": "node --env-file=.env.test node_modules/prisma/build/index.js migrate deploy && node --env-file=.env.test prisma/seed.js --overwrite"
+    "pretest": "node --env-file=.env.test node_modules/prisma/build/index.js migrate deploy && node --env-file=.env.test prisma/seed.js --overwrite",
+    "postinstall": "prisma generate",
+    "vercel-build": "prisma migrate deploy && node prisma/seed.js"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
+    "@vercel/blob": "^1.1.1",
     "bcryptjs": "^2.4.3",
     "compression": "^1.8.2",
     "cors": "^2.8.6",

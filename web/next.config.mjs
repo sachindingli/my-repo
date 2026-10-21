@@ -7,13 +7,19 @@ const nextConfig = {
   outputFileTracingRoot: import.meta.dirname,
   images: {
     formats: ['image/avif', 'image/webp'],
-    remotePatterns: [{ protocol: api.protocol.replace(':', ''), hostname: api.hostname, port: api.port, pathname: '/uploads/**' }],
+    remotePatterns: [
+      // Photos uploaded in the admin (Vercel Blob).
+      { protocol: 'https', hostname: '*.public.blob.vercel-storage.com' },
+      // Local development: admin uploads saved on the API's disk.
+      { protocol: api.protocol.replace(':', ''), hostname: api.hostname, port: api.port, pathname: '/uploads/**' },
+    ],
     minimumCacheTTL: 60 * 60 * 24 * 30,
   },
   // The browser talks to the API through the storefront's own domain (no CORS, one origin).
   async rewrites() {
     return [
       { source: '/api/:path*', destination: `${API_URL}/api/:path*` },
+      // Only reached for files not in web/public/uploads (local admin uploads in development).
       { source: '/uploads/:path*', destination: `${API_URL}/uploads/:path*` },
     ];
   },
@@ -34,6 +40,10 @@ const nextConfig = {
   },
   async headers() {
     return [
+      {
+        source: '/uploads/:file*',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=2592000' }],
+      },
       {
         source: '/brand/:file*',
         headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
