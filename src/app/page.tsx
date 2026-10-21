@@ -6,7 +6,7 @@ import { CANDIDATES, NOTA, VOTE_OPTIONS } from '@/lib/candidates'
 import { winChances } from '@/lib/forecast'
 
 type Lang = 'hi' | 'en'
-type Results = { counts: Record<string, number>; total: number; persistent?: boolean }
+type Results = { counts: Record<string, number>; total: number; persistent?: boolean; closed?: boolean }
 type Msg = { text: string; ts: number }
 
 const VOTER_KEY = 'deengli_voter_id'
@@ -41,6 +41,9 @@ const T = {
     desktopBlocked: 'कंप्यूटर/लैपटॉप से वोट बंद है। कृपया अपने मोबाइल फ़ोन से वोट करें।',
     ipLimit: 'इस नेटवर्क से बहुत वोट आ चुके हैं। कृपया बाद में या किसी और नेटवर्क से कोशिश करें।',
     captchaRequired: 'कृपया नीचे दी गई जाँच (मैं रोबोट नहीं हूँ) पूरी करें।',
+    votingClosed: 'मतदान बंद हो चुका है।',
+    closedBanner: 'मतदान बंद',
+    unreliableNote: 'नोट: इस poll में बहुत सारे स्वतः/नकली वोट आए थे, इसलिए ये आँकड़े भरोसेमंद नतीजा नहीं हैं।',
     genericErr: 'कुछ गड़बड़ हुई, फिर कोशिश करें।',
     networkErr: 'नेटवर्क की समस्या — कनेक्शन जाँचें।',
     disclaimer: 'अनौपचारिक जनमत संग्रह — यह आधिकारिक ग्राम पंचायत चुनाव नहीं है।',
@@ -84,6 +87,9 @@ const T = {
     desktopBlocked: 'Voting from computer/laptop is disabled. Please vote from your mobile phone.',
     ipLimit: 'Too many votes from this network already. Please try later or from another network.',
     captchaRequired: 'Please complete the "I am not a robot" check below.',
+    votingClosed: 'Voting is closed.',
+    closedBanner: 'Voting closed',
+    unreliableNote: 'Note: this poll received many automated/fake votes, so these numbers are not a reliable result.',
     genericErr: 'Something went wrong, please try again.',
     networkErr: 'Network problem — check your connection.',
     disclaimer: 'Unofficial community poll — this is not the official Gram Panchayat election.',
@@ -228,7 +234,11 @@ export default function Home() {
   async function fetchResults() {
     try {
       const res = await fetch('/api/vote', { cache: 'no-store' })
-      if (res.ok) setResults(await res.json())
+      if (res.ok) {
+        const data = await res.json()
+        setResults(data)
+        if (data.closed) setShowResults(true)
+      }
     } catch {
       /* ignore */
     }
@@ -286,6 +296,9 @@ export default function Home() {
       } else if (data.reason === 'captcha_required' || data.reason === 'captcha_failed') {
         setNotice(t.captchaRequired)
         setCaptcha('')
+      } else if (data.reason === 'closed') {
+        setShowResults(true)
+        setNotice(t.votingClosed)
       } else {
         setNotice(t.genericErr)
       }
@@ -445,6 +458,12 @@ export default function Home() {
           </section>
         ) : (
           <section aria-label="Results" className={styles.results}>
+            {results?.closed && (
+              <div className={styles.closedBanner}>
+                <strong>🔒 {t.closedBanner}</strong>
+                <span className={styles.unreliable}>{t.unreliableNote}</span>
+              </div>
+            )}
             {leader && (
               <div className={styles.winner} style={{ ['--accent' as string]: leader.accent }}>
                 <span className={styles.crown} aria-hidden="true">

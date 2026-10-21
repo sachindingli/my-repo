@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { castVote, getResults, hasRemoteStore } from '@/lib/store'
+import { castVote, getResults, hasRemoteStore, getPollClosed } from '@/lib/store'
 import {
   clientIp,
   hashIp,
@@ -14,7 +14,8 @@ export const dynamic = 'force-dynamic'
 
 export async function GET() {
   const results = await getResults()
-  return NextResponse.json({ ...results, persistent: hasRemoteStore })
+  const closed = await getPollClosed()
+  return NextResponse.json({ ...results, persistent: hasRemoteStore, closed })
 }
 
 export async function POST(request: Request) {
@@ -23,6 +24,10 @@ export async function POST(request: Request) {
     body = await request.json()
   } catch {
     return NextResponse.json({ ok: false, reason: 'bad_request' }, { status: 400 })
+  }
+
+  if (await getPollClosed()) {
+    return NextResponse.json({ ok: false, reason: 'closed' }, { status: 403 })
   }
 
   const { device, os, browser } = parseUserAgent(request.headers.get('user-agent') || '')

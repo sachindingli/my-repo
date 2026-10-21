@@ -200,6 +200,7 @@ type FileData = {
   lang: Record<string, number>
   timeHour: Record<string, number>
   messages: { text: string; ts: number }[]
+  closed?: boolean
 }
 
 function readFile(): FileData {
@@ -283,6 +284,24 @@ export async function getAdminData(): Promise<AdminData> {
 
 // A voter who has already voted may append an extra comment. It is stored in the
 // same messages list (still NOT linked to their candidate choice).
+export async function getPollClosed(): Promise<boolean> {
+  if (hasRemoteStore) {
+    const [v] = await pipeline([['GET', 'poll:closed']])
+    return v === '1' || v === 1
+  }
+  return !!readFile().closed
+}
+
+export async function setPollClosed(closed: boolean): Promise<void> {
+  if (hasRemoteStore) {
+    await pipeline([['SET', 'poll:closed', closed ? '1' : '0']])
+    return
+  }
+  const d = readFile()
+  d.closed = closed
+  writeFile(d)
+}
+
 export async function addComment(
   voterId: string,
   message: string,
