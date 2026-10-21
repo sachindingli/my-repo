@@ -13,6 +13,7 @@ const VOTER_KEY = 'deengli_voter_id'
 const VOTED_KEY = 'deengli_voted_for'
 const LANG_KEY = 'deengli_lang'
 const MSGS_KEY = 'deengli_my_messages'
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ''
 
 const T = {
   hi: {
@@ -39,6 +40,7 @@ const T = {
     already: 'इस डिवाइस से पहले ही वोट दिया जा चुका है।',
     desktopBlocked: 'कंप्यूटर/लैपटॉप से वोट बंद है। कृपया अपने मोबाइल फ़ोन से वोट करें।',
     ipLimit: 'इस नेटवर्क से बहुत वोट आ चुके हैं। कृपया बाद में या किसी और नेटवर्क से कोशिश करें।',
+    captchaRequired: 'कृपया नीचे दी गई जाँच (मैं रोबोट नहीं हूँ) पूरी करें।',
     genericErr: 'कुछ गड़बड़ हुई, फिर कोशिश करें।',
     networkErr: 'नेटवर्क की समस्या — कनेक्शन जाँचें।',
     disclaimer: 'अनौपचारिक जनमत संग्रह — यह आधिकारिक ग्राम पंचायत चुनाव नहीं है।',
@@ -81,6 +83,7 @@ const T = {
     already: 'This device has already voted.',
     desktopBlocked: 'Voting from computer/laptop is disabled. Please vote from your mobile phone.',
     ipLimit: 'Too many votes from this network already. Please try later or from another network.',
+    captchaRequired: 'Please complete the "I am not a robot" check below.',
     genericErr: 'Something went wrong, please try again.',
     networkErr: 'Network problem — check your connection.',
     disclaimer: 'Unofficial community poll — this is not the official Gram Panchayat election.',
@@ -157,6 +160,7 @@ export default function Home() {
   const [comment, setComment] = useState('')
   const [addingComment, setAddingComment] = useState(false)
   const [commentDone, setCommentDone] = useState(false)
+  const [captcha, setCaptcha] = useState('')
 
   const t = T[lang]
 
@@ -177,6 +181,39 @@ export default function Home() {
     setReady(true)
     void fetchResults()
   }, [])
+
+  // Load + render the Cloudflare Turnstile CAPTCHA widget (only if configured).
+  useEffect(() => {
+    if (!TURNSTILE_SITE_KEY || showResults || votedFor) return
+    if (!document.getElementById('cf-turnstile-script')) {
+      const s = document.createElement('script')
+      s.id = 'cf-turnstile-script'
+      s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js'
+      s.async = true
+      s.defer = true
+      document.head.appendChild(s)
+    }
+    const iv = setInterval(() => {
+      const w = (window as unknown as {
+        turnstile?: { render: (el: string, opts: Record<string, unknown>) => void }
+      }).turnstile
+      const el = document.getElementById('cf-turnstile-box')
+      if (w && el && !el.hasChildNodes()) {
+        w.render('#cf-turnstile-box', {
+          sitekey: TURNSTILE_SITE_KEY,
+          callback: (tok: string) => setCaptcha(tok),
+          'error-callback': () => setCaptcha(''),
+          'expired-callback': () => setCaptcha(''),
+        })
+        clearInterval(iv)
+      }
+    }, 300)
+    const stop = setTimeout(() => clearInterval(iv), 15000)
+    return () => {
+      clearInterval(iv)
+      clearTimeout(stop)
+    }
+  }, [showResults, votedFor])
 
   function pickLang(l: Lang) {
     setLang(l)
@@ -203,6 +240,10 @@ export default function Home() {
       setNotice(t.pickFirst)
       return
     }
+    if (TURNSTILE_SITE_KEY && !captcha) {
+      setNotice(t.captchaRequired)
+      return
+    }
     setNotice(null)
     setSubmitting(true)
     try {
@@ -215,6 +256,7 @@ export default function Home() {
           lang,
           networkType: networkType(),
           message,
+          turnstileToken: captcha,
         }),
       })
       const data = await res.json()
@@ -241,6 +283,9 @@ export default function Home() {
         setNotice(t.desktopBlocked)
       } else if (data.reason === 'ip_limit') {
         setNotice(t.ipLimit)
+      } else if (data.reason === 'captcha_required' || data.reason === 'captcha_failed') {
+        setNotice(t.captchaRequired)
+        setCaptcha('')
       } else {
         setNotice(t.genericErr)
       }
@@ -387,6 +432,8 @@ export default function Home() {
               maxLength={500}
               disabled={submitting}
             />
+
+            {TURNSTILE_SITE_KEY && <div id="cf-turnstile-box" className={styles.captcha} />}
 
             <button className={styles.submit} onClick={submitVote} disabled={submitting || !selected}>
               {submitting ? t.submitting : t.submit}

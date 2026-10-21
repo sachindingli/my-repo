@@ -163,6 +163,13 @@
   outline-offset: 1px;
 }
 
+.captcha {
+  margin-top: 4px;
+  display: flex;
+  justify-content: center;
+  min-height: 65px;
+}
+
 .submit {
   margin-top: 4px;
   width: 100%;

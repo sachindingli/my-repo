@@ -34,6 +34,33 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, reason: 'desktop_blocked' }, { status: 403 })
   }
 
+  const ip = clientIp(request.headers)
+
+  // CAPTCHA (Cloudflare Turnstile) — stops automated/bot voting. Enforced only
+  // when TURNSTILE_SECRET_KEY is set, so the site keeps working until keys are
+  // added.
+  const turnstileSecret = process.env.TURNSTILE_SECRET_KEY
+  if (turnstileSecret) {
+    const token = String(body?.turnstileToken ?? '')
+    if (!token) {
+      return NextResponse.json({ ok: false, reason: 'captcha_required' }, { status: 400 })
+    }
+    try {
+      const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ secret: turnstileSecret, response: token, remoteip: ip }),
+        cache: 'no-store',
+      })
+      const verify = (await verifyRes.json()) as { success?: boolean }
+      if (!verify.success) {
+        return NextResponse.json({ ok: false, reason: 'captcha_failed' }, { status: 403 })
+      }
+    } catch {
+      return NextResponse.json({ ok: false, reason: 'captcha_failed' }, { status: 403 })
+    }
+  }
+
   const outcome = await castVote({
     candidateId: String(body?.candidateId ?? ''),
     voterId: String(body?.voterId ?? ''),
@@ -42,7 +69,7 @@ export async function POST(request: Request) {
     device,
     os,
     browser,
-    ipHash: hashIp(clientIp(request.headers)),
+    ipHash: hashIp(ip),
     message: cleanMessage(body?.message),
   })
 
