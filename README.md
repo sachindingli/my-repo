@@ -9,8 +9,13 @@ tally.
 > **This is an unofficial community poll, not the official Gram Panchayat
 > election.** The page says so clearly to voters.
 
-The site is bilingual (**Hindi / English** toggle), voters can leave an optional
-message, and there is a password-protected **admin dashboard** at `/admin`.
+The site is bilingual with a **first-visit language popup** (Hindi / English, also
+switchable any time), voters can leave an optional message, and there is a
+password-protected **admin dashboard** at `/admin`.
+
+A returning voter sees **their own** vote and messages (stored in their own
+browser) and the live results with a **"winning chance"** projection, and can add
+further comments. None of that reveals other people's choices.
 
 ## What it does (and does not) collect
 

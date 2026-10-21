@@ -3,16 +3,21 @@
 import { useEffect, useState } from 'react'
 import styles from './page.module.css'
 import { CANDIDATES } from '@/lib/candidates'
+import { winChances } from '@/lib/forecast'
 
 type Lang = 'hi' | 'en'
 type Results = { counts: Record<string, number>; total: number; persistent?: boolean }
+type Msg = { text: string; ts: number }
 
 const VOTER_KEY = 'deengli_voter_id'
 const VOTED_KEY = 'deengli_voted_for'
 const LANG_KEY = 'deengli_lang'
+const MSGS_KEY = 'deengli_my_messages'
 
 const T = {
   hi: {
+    chooseLang: 'भाषा चुनें',
+    chooseLangSub: 'Please choose your language',
     panchayat: 'ग्राम पंचायत देंगली',
     title: 'सरपंच चुनाव',
     subtitle: 'देंगली गाँव · जनमत संग्रह · 2026',
@@ -36,8 +41,23 @@ const T = {
     networkErr: 'नेटवर्क की समस्या — कनेक्शन जाँचें।',
     disclaimer: 'अनौपचारिक जनमत संग्रह — यह आधिकारिक ग्राम पंचायत चुनाव नहीं है।',
     demoWarn: 'डेमो स्टोरेज — वोट अभी साझा नहीं हो रहे। लिंक शेयर करने से पहले डेटाबेस सेट करें (README देखें)।',
+    currentlyLeading: 'अभी आगे',
+    winChance: 'जीत की संभावना',
+    forecastNote: 'वर्तमान वोटों के आधार पर अनुमान — आधिकारिक भविष्यवाणी नहीं।',
+    yourSubmission: 'आपका मतदान',
+    youVotedFor: 'आपने वोट दिया',
+    yourMessages: 'आपके संदेश',
+    noMessage: 'कोई संदेश नहीं',
+    addComment: 'और टिप्पणी जोड़ें',
+    addCommentPh: 'अपनी टिप्पणी लिखें…',
+    add: 'जोड़ें',
+    adding: 'जोड़ा जा रहा है…',
+    commentAdded: 'टिप्पणी जोड़ी गई',
+    madeBy: 'बनाया गया —',
   },
   en: {
+    chooseLang: 'Choose language',
+    chooseLangSub: 'अपनी भाषा चुनें',
     panchayat: 'Deengli Gram Panchayat',
     title: 'Sarpanch Poll',
     subtitle: 'Deengli Village · Community Poll · 2026',
@@ -61,6 +81,19 @@ const T = {
     networkErr: 'Network problem — check your connection.',
     disclaimer: 'Unofficial community poll — this is not the official Gram Panchayat election.',
     demoWarn: 'Demo storage — votes are not shared yet. Configure a database before sharing the link (see README).',
+    currentlyLeading: 'Currently leading',
+    winChance: 'Winning chance',
+    forecastNote: 'Rough projection from current votes — not an official forecast.',
+    yourSubmission: 'Your vote',
+    youVotedFor: 'You voted for',
+    yourMessages: 'Your messages',
+    noMessage: 'No message',
+    addComment: 'Add another comment',
+    addCommentPh: 'Write your comment…',
+    add: 'Add',
+    adding: 'Adding…',
+    commentAdded: 'Comment added',
+    madeBy: 'Made by —',
   },
 } as const
 
@@ -89,9 +122,26 @@ function networkType(): string {
     return 'unknown'
   }
 }
+function readMyMessages(): Msg[] {
+  try {
+    const raw = localStorage.getItem(MSGS_KEY)
+    return raw ? (JSON.parse(raw) as Msg[]) : []
+  } catch {
+    return []
+  }
+}
+function saveMyMessages(msgs: Msg[]): void {
+  try {
+    localStorage.setItem(MSGS_KEY, JSON.stringify(msgs))
+  } catch {
+    /* ignore */
+  }
+}
 
 export default function Home() {
+  const [ready, setReady] = useState(false)
   const [lang, setLang] = useState<Lang>('hi')
+  const [langChosen, setLangChosen] = useState(true)
   const [selected, setSelected] = useState<string | null>(null)
   const [message, setMessage] = useState('')
   const [results, setResults] = useState<Results | null>(null)
@@ -99,6 +149,10 @@ export default function Home() {
   const [showResults, setShowResults] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
+  const [myMessages, setMyMessages] = useState<Msg[]>([])
+  const [comment, setComment] = useState('')
+  const [addingComment, setAddingComment] = useState(false)
+  const [commentDone, setCommentDone] = useState(false)
 
   const t = T[lang]
 
@@ -106,19 +160,23 @@ export default function Home() {
     try {
       const l = localStorage.getItem(LANG_KEY)
       if (l === 'en' || l === 'hi') setLang(l)
+      else setLangChosen(false)
       const v = localStorage.getItem(VOTED_KEY)
       if (v) {
         setVotedFor(v)
         setShowResults(true)
       }
+      setMyMessages(readMyMessages())
     } catch {
       /* storage unavailable */
     }
+    setReady(true)
     void fetchResults()
   }, [])
 
-  function changeLang(l: Lang) {
+  function pickLang(l: Lang) {
     setLang(l)
+    setLangChosen(true)
     try {
       localStorage.setItem(LANG_KEY, l)
     } catch {
@@ -162,6 +220,11 @@ export default function Home() {
         } catch {
           /* ignore */
         }
+        if (message.trim()) {
+          const next = [...myMessages, { text: message.trim(), ts: Date.now() }]
+          setMyMessages(next)
+          saveMyMessages(next)
+        }
         setVotedFor(selected)
         setResults(data.results)
         setShowResults(true)
@@ -180,26 +243,71 @@ export default function Home() {
     }
   }
 
+  async function addComment() {
+    const text = comment.trim()
+    if (!text || addingComment) return
+    setAddingComment(true)
+    setCommentDone(false)
+    try {
+      const res = await fetch('/api/comment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ voterId: getVoterId(), message: text }),
+      })
+      if (res.ok) {
+        const next = [...myMessages, { text, ts: Date.now() }]
+        setMyMessages(next)
+        saveMyMessages(next)
+        setComment('')
+        setCommentDone(true)
+      } else {
+        setNotice(t.genericErr)
+      }
+    } catch {
+      setNotice(t.networkErr)
+    } finally {
+      setAddingComment(false)
+    }
+  }
+
   const counts = results?.counts ?? {}
   const total = results?.total ?? 0
-  const leaderId =
+  const leader =
     total > 0
-      ? CANDIDATES.reduce((b, c) => ((counts[c.id] || 0) > (counts[b.id] || 0) ? c : b), CANDIDATES[0]).id
+      ? CANDIDATES.reduce((b, c) => ((counts[c.id] || 0) > (counts[b.id] || 0) ? c : b), CANDIDATES[0])
       : null
+  const chances = winChances(counts)
+  const votedCandidate = CANDIDATES.find((c) => c.id === votedFor) || null
 
   return (
     <main className={styles.page}>
+      {ready && !langChosen && (
+        <div className={styles.modalBg} role="dialog" aria-modal="true">
+          <div className={styles.modal}>
+            <h2 className={styles.modalTitle}>भाषा चुनें / Choose language</h2>
+            <div className={styles.modalBtns}>
+              <button className={styles.modalBtn} onClick={() => pickLang('hi')}>
+                हिंदी
+              </button>
+              <button className={styles.modalBtn} onClick={() => pickLang('en')}>
+                English
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className={styles.shell}>
         <div className={styles.langRow}>
           <button
             className={`${styles.langBtn} ${lang === 'hi' ? styles.langActive : ''}`}
-            onClick={() => changeLang('hi')}
+            onClick={() => pickLang('hi')}
           >
             हिंदी
           </button>
           <button
             className={`${styles.langBtn} ${lang === 'en' ? styles.langActive : ''}`}
-            onClick={() => changeLang('en')}
+            onClick={() => pickLang('en')}
           >
             English
           </button>
@@ -254,11 +362,7 @@ export default function Home() {
               disabled={submitting}
             />
 
-            <button
-              className={styles.submit}
-              onClick={submitVote}
-              disabled={submitting || !selected}
-            >
+            <button className={styles.submit} onClick={submitVote} disabled={submitting || !selected}>
               {submitting ? t.submitting : t.submit}
             </button>
 
@@ -268,6 +372,24 @@ export default function Home() {
           </section>
         ) : (
           <section aria-label="Results" className={styles.results}>
+            {leader && (
+              <div className={styles.winner} style={{ ['--accent' as string]: leader.accent }}>
+                <span className={styles.crown} aria-hidden="true">
+                  👑
+                </span>
+                <div className={styles.winnerInfo}>
+                  <span className={styles.winnerLabel}>{t.currentlyLeading}</span>
+                  <span className={styles.winnerName}>
+                    {leader.symbol} {lang === 'hi' ? leader.nameHi : leader.name}
+                  </span>
+                </div>
+                <div className={styles.chanceBox}>
+                  <span className={styles.chanceNum}>{chances[leader.id]}%</span>
+                  <span className={styles.chanceLabel}>{t.winChance}</span>
+                </div>
+              </div>
+            )}
+
             <div className={styles.resultsHead}>
               <h2 className={styles.resultsTitle}>{t.resultsTitle}</h2>
               <span className={styles.total}>
@@ -281,10 +403,9 @@ export default function Home() {
                 <div key={c.id} className={styles.row}>
                   <div className={styles.rowTop}>
                     <span className={styles.rowName}>
-                      <span aria-hidden="true">{c.symbol}</span>{' '}
-                      {lang === 'hi' ? c.nameHi : c.name}
+                      <span aria-hidden="true">{c.symbol}</span> {lang === 'hi' ? c.nameHi : c.name}
                       {votedFor === c.id && <span className={styles.youTag}>{t.yourVote}</span>}
-                      {leaderId === c.id && total > 0 && (
+                      {leader?.id === c.id && total > 0 && (
                         <span className={styles.leadTag}>{t.leading}</span>
                       )}
                     </span>
@@ -298,9 +419,60 @@ export default function Home() {
                 </div>
               )
             })}
+            <p className={styles.forecastNote}>{t.forecastNote}</p>
             <button className={styles.refresh} onClick={() => void fetchResults()}>
               {t.refresh}
             </button>
+
+            {votedCandidate && (
+              <div className={styles.mine}>
+                <h3 className={styles.mineTitle}>{t.yourSubmission}</h3>
+                <p className={styles.mineVote}>
+                  {t.youVotedFor}:{' '}
+                  <strong>
+                    {votedCandidate.symbol} {lang === 'hi' ? votedCandidate.nameHi : votedCandidate.name}
+                  </strong>
+                </p>
+                <p className={styles.mineSub}>{t.yourMessages}</p>
+                {myMessages.length === 0 ? (
+                  <p className={styles.mineEmpty}>{t.noMessage}</p>
+                ) : (
+                  <ul className={styles.mineList}>
+                    {myMessages.map((m, i) => (
+                      <li key={i} className={styles.mineItem}>
+                        <span>{m.text}</span>
+                        <span className={styles.mineTime}>{new Date(m.ts).toLocaleString()}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                <label className={styles.msgLabel} htmlFor="comment">
+                  {t.addComment}
+                </label>
+                <textarea
+                  id="comment"
+                  className={styles.msgBox}
+                  value={comment}
+                  onChange={(e) => {
+                    setComment(e.target.value.slice(0, 500))
+                    setCommentDone(false)
+                  }}
+                  placeholder={t.addCommentPh}
+                  rows={2}
+                  maxLength={500}
+                  disabled={addingComment}
+                />
+                <button
+                  className={styles.addBtn}
+                  onClick={addComment}
+                  disabled={addingComment || !comment.trim()}
+                >
+                  {addingComment ? t.adding : t.add}
+                </button>
+                {commentDone && <p className={styles.added}>✓ {t.commentAdded}</p>}
+              </div>
+            )}
           </section>
         )}
 
@@ -309,6 +481,27 @@ export default function Home() {
         <footer className={styles.footer}>
           <p className={styles.disclaimer}>{t.disclaimer}</p>
           {results && results.persistent === false && <p className={styles.warn}>⚠ {t.demoWarn}</p>}
+          <div className={styles.credits}>
+            <span className={styles.creditName}>{t.madeBy} Sachin Jangir</span>
+            <div className={styles.creditLinks}>
+              <a
+                className={styles.creditLink}
+                href="https://instagram.com/thesachinjangir"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                📷 Instagram: @thesachinjangir
+              </a>
+              <a
+                className={styles.creditLink}
+                href="https://wa.me/917023973072"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                💬 WhatsApp: +91 70239 73072
+              </a>
+            </div>
+          </div>
         </footer>
       </div>
     </main>

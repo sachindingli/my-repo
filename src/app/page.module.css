@@ -311,9 +311,210 @@
   padding: 10px 12px;
 }
 
+/* Language popup */
+.modalBg {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 15, 8, 0.55);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  z-index: 50;
+}
+.modal {
+  background: var(--surface);
+  border-radius: 18px;
+  padding: 26px 22px;
+  width: 100%;
+  max-width: 340px;
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+}
+.modalTitle {
+  font-size: 1.2rem;
+  font-weight: 800;
+  margin-bottom: 18px;
+}
+.modalBtns {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.modalBtn {
+  background: var(--marigold);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 15px;
+  font-size: 1.1rem;
+  font-weight: 800;
+  cursor: pointer;
+  font-family: inherit;
+}
+.modalBtn:last-child {
+  background: #1864ab;
+}
+
+/* Winner / leading banner */
+.winner {
+  --accent: var(--marigold);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 6px;
+}
+.crown {
+  font-size: 2rem;
+  flex: none;
+}
+.winnerInfo {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.winnerLabel {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: var(--accent);
+}
+.winnerName {
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+.chanceBox {
+  text-align: center;
+  flex: none;
+}
+.chanceNum {
+  display: block;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--accent);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.chanceLabel {
+  font-size: 0.62rem;
+  color: var(--muted);
+  line-height: 1.2;
+  display: block;
+  max-width: 72px;
+}
+.forecastNote {
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-align: center;
+  font-style: italic;
+}
+
+/* Your submission panel */
+.mine {
+  margin-top: 8px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mineTitle {
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+.mineVote {
+  font-size: 0.95rem;
+}
+.mineSub {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.mineEmpty {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.mineList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mineItem {
+  background: var(--sand);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mineTime {
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+.addBtn {
+  align-self: flex-start;
+  background: #1864ab;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 20px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+}
+.addBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.added {
+  font-size: 0.82rem;
+  color: #2b8a3e;
+  font-weight: 600;
+}
+
 .footer {
   margin-top: 28px;
   text-align: center;
+}
+.credits {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+.creditName {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.creditLinks {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+.creditLink {
+  font-size: 0.85rem;
+  color: #1864ab;
+  font-weight: 600;
+  text-decoration: none;
+}
+.creditLink:hover {
+  text-decoration: underline;
 }
 .disclaimer {
   font-size: 0.75rem;

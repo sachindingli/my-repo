@@ -261,3 +261,30 @@ export async function castVote(i: VoteInput): Promise<VoteOutcome> {
 export async function getAdminData(): Promise<AdminData> {
   return hasRemoteStore ? redisAdmin() : fileAdmin()
 }
+
+// A voter who has already voted may append an extra comment. It is stored in the
+// same messages list (still NOT linked to their candidate choice).
+export async function addComment(
+  voterId: string,
+  message: string,
+): Promise<{ ok: boolean; reason?: 'invalid_voter' | 'not_voted' | 'empty' }> {
+  if (!voterId || voterId.length < 8 || voterId.length > 100) return { ok: false, reason: 'invalid_voter' }
+  if (!message) return { ok: false, reason: 'empty' }
+
+  if (hasRemoteStore) {
+    const [is] = await pipeline([['SISMEMBER', K.voters, voterId]])
+    if (Number(is) === 0) return { ok: false, reason: 'not_voted' }
+    await pipeline([
+      ['RPUSH', K.messages, JSON.stringify({ text: message, ts: Date.now() })],
+      ['LTRIM', K.messages, -1000, -1],
+    ])
+    return { ok: true }
+  }
+
+  const d = readFile()
+  if (!d.voters.includes(voterId)) return { ok: false, reason: 'not_voted' }
+  d.messages.push({ text: message, ts: Date.now() })
+  if (d.messages.length > 1000) d.messages = d.messages.slice(-1000)
+  writeFile(d)
+  return { ok: true }
+}
