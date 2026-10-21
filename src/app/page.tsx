@@ -37,6 +37,7 @@ const T = {
     leading: 'आगे',
     refresh: 'ताज़ा करें',
     already: 'इस डिवाइस से पहले ही वोट दिया जा चुका है।',
+    desktopBlocked: 'कंप्यूटर/लैपटॉप से वोट बंद है। कृपया अपने मोबाइल फ़ोन से वोट करें।',
     genericErr: 'कुछ गड़बड़ हुई, फिर कोशिश करें।',
     networkErr: 'नेटवर्क की समस्या — कनेक्शन जाँचें।',
     disclaimer: 'अनौपचारिक जनमत संग्रह — यह आधिकारिक ग्राम पंचायत चुनाव नहीं है।',
@@ -77,6 +78,7 @@ const T = {
     leading: 'leading',
     refresh: 'Refresh',
     already: 'This device has already voted.',
+    desktopBlocked: 'Voting from computer/laptop is disabled. Please vote from your mobile phone.',
     genericErr: 'Something went wrong, please try again.',
     networkErr: 'Network problem — check your connection.',
     disclaimer: 'Unofficial community poll — this is not the official Gram Panchayat election.',
@@ -233,6 +235,8 @@ export default function Home() {
         setResults(data.results)
         setShowResults(true)
         setNotice(t.already)
+      } else if (data.reason === 'desktop_blocked') {
+        setNotice(t.desktopBlocked)
       } else {
         setNotice(t.genericErr)
       }

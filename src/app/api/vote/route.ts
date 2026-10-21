@@ -26,6 +26,14 @@ export async function POST(request: Request) {
   }
 
   const { device, os, browser } = parseUserAgent(request.headers.get('user-agent') || '')
+
+  // Block desktop/PC voting (the fake-vote attack came from Windows PCs).
+  // Note: a User-Agent can be faked, so this stops casual abuse, not a
+  // determined attacker — pair it with a voting code for stronger protection.
+  if (device === 'Desktop') {
+    return NextResponse.json({ ok: false, reason: 'desktop_blocked' }, { status: 403 })
+  }
+
   const outcome = await castVote({
     candidateId: String(body?.candidateId ?? ''),
     voterId: String(body?.voterId ?? ''),
