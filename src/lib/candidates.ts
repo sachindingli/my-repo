@@ -16,4 +16,18 @@ export const CANDIDATES: Candidate[] = [
   { id: 'surendra', name: 'Surendra Jhajharia', nameHi: 'सुरेंद्र झाझड़िया', symbol: '🚜', accent: '#9c36b5' },
 ]
 
+// NOTA ("None of the Above") — a valid vote option, counted and shown, but it is
+// not a candidate, so it can never be the "leader" or part of the winning chance.
+export const NOTA: Candidate = {
+  id: 'nota',
+  name: 'None of the Above (NOTA)',
+  nameHi: 'इनमें से कोई नहीं (NOTA)',
+  symbol: '🚫',
+  accent: '#868e96',
+}
+
 export const CANDIDATE_IDS: string[] = CANDIDATES.map((c) => c.id)
+
+// All selectable vote options (candidates + NOTA).
+export const VOTE_OPTIONS: Candidate[] = [...CANDIDATES, NOTA]
+export const VOTE_OPTION_IDS: string[] = VOTE_OPTIONS.map((o) => o.id)

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import styles from './page.module.css'
-import { CANDIDATES } from '@/lib/candidates'
+import { CANDIDATES, NOTA, VOTE_OPTIONS } from '@/lib/candidates'
 import { winChances } from '@/lib/forecast'
 
 type Lang = 'hi' | 'en'
@@ -277,7 +277,7 @@ export default function Home() {
       ? CANDIDATES.reduce((b, c) => ((counts[c.id] || 0) > (counts[b.id] || 0) ? c : b), CANDIDATES[0])
       : null
   const chances = winChances(counts)
-  const votedCandidate = CANDIDATES.find((c) => c.id === votedFor) || null
+  const votedCandidate = VOTE_OPTIONS.find((c) => c.id === votedFor) || null
 
   return (
     <main className={styles.page}>
@@ -347,6 +347,24 @@ export default function Home() {
                 </span>
               </button>
             ))}
+
+            <button
+              className={`${styles.card} ${styles.notaCard} ${selected === NOTA.id ? styles.cardSelected : ''}`}
+              style={{ ['--accent' as string]: NOTA.accent }}
+              onClick={() => setSelected(NOTA.id)}
+              disabled={submitting}
+              aria-pressed={selected === NOTA.id}
+            >
+              <span className={styles.symbol} aria-hidden="true">
+                {NOTA.symbol}
+              </span>
+              <span className={styles.names}>
+                <span className={styles.nameHi}>{lang === 'hi' ? NOTA.nameHi : NOTA.name}</span>
+              </span>
+              <span className={styles.radio} aria-hidden="true">
+                {selected === NOTA.id ? '●' : '○'}
+              </span>
+            </button>
 
             <label className={styles.msgLabel} htmlFor="msg">
               {t.messageLabel}
@@ -419,6 +437,27 @@ export default function Home() {
                 </div>
               )
             })}
+            {(() => {
+              const n = counts[NOTA.id] || 0
+              const pct = total > 0 ? Math.round((n / total) * 100) : 0
+              return (
+                <div className={styles.row}>
+                  <div className={styles.rowTop}>
+                    <span className={styles.rowName}>
+                      <span aria-hidden="true">{NOTA.symbol}</span>{' '}
+                      {lang === 'hi' ? NOTA.nameHi : NOTA.name}
+                      {votedFor === NOTA.id && <span className={styles.youTag}>{t.yourVote}</span>}
+                    </span>
+                    <span className={styles.rowPct}>
+                      {pct}% · {n}
+                    </span>
+                  </div>
+                  <div className={styles.bar}>
+                    <div className={styles.fill} style={{ width: `${pct}%`, background: NOTA.accent }} />
+                  </div>
+                </div>
+              )
+            })()}
             <p className={styles.forecastNote}>{t.forecastNote}</p>
             <button className={styles.refresh} onClick={() => void fetchResults()}>
               {t.refresh}

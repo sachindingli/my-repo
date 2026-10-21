@@ -13,7 +13,7 @@
 // picked alongside any device/network detail.
 import fs from 'fs'
 import path from 'path'
-import { CANDIDATE_IDS } from './candidates'
+import { VOTE_OPTION_IDS } from './candidates'
 
 const REST_URL = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL
 const REST_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN
@@ -67,7 +67,7 @@ export type AdminData = {
 
 function emptyCounts(): Record<string, number> {
   const c: Record<string, number> = {}
-  for (const id of CANDIDATE_IDS) c[id] = 0
+  for (const id of VOTE_OPTION_IDS) c[id] = 0
   return c
 }
 function totalOf(counts: Record<string, number>): number {
@@ -249,7 +249,7 @@ export async function getResults(): Promise<Results> {
 }
 
 export async function castVote(i: VoteInput): Promise<VoteOutcome> {
-  if (!CANDIDATE_IDS.includes(i.candidateId)) {
+  if (!VOTE_OPTION_IDS.includes(i.candidateId)) {
     return { ok: false, reason: 'invalid_candidate', results: await getResults() }
   }
   if (!i.voterId || i.voterId.length < 8 || i.voterId.length > 100) {

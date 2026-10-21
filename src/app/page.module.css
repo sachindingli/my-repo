@@ -127,6 +127,13 @@
   box-shadow: 0 0 0 2px var(--accent), 0 6px 18px rgba(42, 33, 24, 0.12);
   background: color-mix(in srgb, var(--accent) 8%, var(--surface));
 }
+.notaCard {
+  border-style: dashed;
+  margin-top: 4px;
+}
+.notaCard .nameHi {
+  font-size: 1rem;
+}
 .radio {
   flex: none;
   font-size: 1.2rem;
