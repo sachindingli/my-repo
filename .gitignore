@@ -1,0 +1,9 @@
+node_modules/
+.next/
+.env
+.env.local
+.env.test
+*.log
+.DS_Store
+# Images uploaded through the admin in production live on the server/disk, not in git.
+# The migrated catalogue photos (api/uploads/*) are committed so a fresh install works.

@@ -1,0 +1,177 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id        Int               @id @default(autoincrement())
+  slug      String            @unique
+  name      String
+  nameHi    String?
+  sortOrder Int               @default(0)
+  products  ProductCategory[]
+}
+
+model Product {
+  id              Int               @id @default(autoincrement())
+  slug            String            @unique
+  name            String
+  nameHi          String?
+  tagline         String?
+  bullets         String[]
+  descriptionHtml String            @default("")
+  specs           Json              @default("[]")
+  metaTitle       String?
+  metaDescription String?
+  isActive        Boolean           @default(true)
+  isFeatured      Boolean           @default(false)
+  sortOrder       Int               @default(0)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  variants        Variant[]
+  categories      ProductCategory[]
+  reviews         Review[]
+}
+
+model ProductCategory {
+  productId  Int
+  categoryId Int
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([productId, categoryId])
+}
+
+/// One purchasable size of a product (e.g. A2 Ghee 1 Litre). Prices are whole rupees.
+model Variant {
+  id         Int         @id @default(autoincrement())
+  productId  Int
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sku        String      @unique
+  label      String
+  /// Old hitkram.com URL slug, used to 301-redirect legacy links.
+  legacySlug String?     @unique
+  mrp        Int
+  price      Int
+  inStock    Boolean     @default(true)
+  isDefault  Boolean     @default(false)
+  images     String[]
+  sortOrder  Int         @default(0)
+  orderItems OrderItem[]
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Review {
+  id        Int          @id @default(autoincrement())
+  productId Int
+  product   Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name      String
+  rating    Int
+  body      String
+  verified  Boolean      @default(false)
+  images    String[]
+  status    ReviewStatus @default(PENDING)
+  legacyId  Int?         @unique
+  createdAt DateTime     @default(now())
+
+  @@index([productId, status])
+}
+
+model BlogPost {
+  id          Int      @id @default(autoincrement())
+  slug        String   @unique
+  title       String
+  excerpt     String   @default("")
+  coverUrl    String?
+  bodyHtml    String
+  isPublished Boolean  @default(true)
+  publishedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Page {
+  id        Int      @id @default(autoincrement())
+  slug      String   @unique
+  title     String
+  bodyHtml  String
+  updatedAt DateTime @updatedAt
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PLACED
+  CONFIRMED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  COD
+  RAZORPAY
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+  FAILED
+  REFUNDED
+}
+
+model Order {
+  id                Int           @id @default(autoincrement())
+  number            String        @unique
+  status            OrderStatus   @default(PLACED)
+  paymentMethod     PaymentMethod
+  paymentStatus     PaymentStatus @default(UNPAID)
+  razorpayOrderId   String?       @unique
+  razorpayPaymentId String?
+  name              String
+  phone             String
+  email             String?
+  address1          String
+  address2          String?
+  city              String
+  state             String
+  pincode           String
+  notes             String?
+  subtotal          Int
+  shipping          Int
+  total             Int
+  trackingUrl       String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  items             OrderItem[]
+
+  @@index([phone])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id           Int      @id @default(autoincrement())
+  orderId      Int
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variantId    Int?
+  variant      Variant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  productName  String
+  variantLabel String
+  unitPrice    Int
+  quantity     Int
+  lineTotal    Int
+}
+
+model AdminUser {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
