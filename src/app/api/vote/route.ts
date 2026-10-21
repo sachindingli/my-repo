@@ -46,6 +46,12 @@ export async function POST(request: Request) {
     message: cleanMessage(body?.message),
   })
 
-  const status = outcome.ok ? 200 : outcome.reason === 'already_voted' ? 409 : 400
+  const status = outcome.ok
+    ? 200
+    : outcome.reason === 'already_voted'
+      ? 409
+      : outcome.reason === 'ip_limit'
+        ? 429
+        : 400
   return NextResponse.json(outcome, { status })
 }

@@ -36,9 +36,14 @@ const K = {
 export type Results = { counts: Record<string, number>; total: number }
 export type VoteOutcome = {
   ok: boolean
-  reason?: 'already_voted' | 'invalid_candidate' | 'invalid_voter'
+  reason?: 'already_voted' | 'invalid_candidate' | 'invalid_voter' | 'ip_limit'
   results: Results
 }
+
+// Max votes allowed from a single IP (network). Caps mass voting from one
+// machine. NOTE: in India many real users share one carrier/NAT IP, so keep
+// this generous enough not to block a genuinely shared village network.
+const IP_VOTE_LIMIT = Math.max(1, Number(process.env.IP_VOTE_LIMIT) || 8)
 export type VoteInput = {
   candidateId: string
   voterId: string
@@ -111,6 +116,14 @@ async function redisVote(i: VoteInput): Promise<VoteOutcome> {
   const [added] = await pipeline([['SADD', K.voters, i.voterId]])
   if (Number(added) === 0) return { ok: false, reason: 'already_voted', results: await redisResults() }
 
+  // Per-IP cap: block mass voting from one network.
+  const ipKey = `ipv:${i.ipHash}`
+  const [ipCount] = await pipeline([['INCR', ipKey]])
+  if (Number(ipCount) === 1) await pipeline([['EXPIRE', ipKey, 604800]])
+  if (Number(ipCount) > IP_VOTE_LIMIT) {
+    return { ok: false, reason: 'ip_limit', results: await redisResults() }
+  }
+
   const batch: (string | number)[][] = [
     ['HINCRBY', K.counts, i.candidateId, 1],
     ['HINCRBY', K.device, i.device, 1],
@@ -178,6 +191,7 @@ type FileData = {
   counts: Record<string, number>
   voters: string[]
   ipHashes: string[]
+  ipCounts: Record<string, number>
   dupip: number
   device: Record<string, number>
   os: Record<string, number>
@@ -190,7 +204,7 @@ type FileData = {
 
 function readFile(): FileData {
   const base: FileData = {
-    counts: emptyCounts(), voters: [], ipHashes: [], dupip: 0,
+    counts: emptyCounts(), voters: [], ipHashes: [], ipCounts: {}, dupip: 0,
     device: {}, os: {}, browser: {}, net: {}, lang: {}, timeHour: {}, messages: [],
   }
   try {
@@ -216,6 +230,11 @@ function fileVote(i: VoteInput): VoteOutcome {
   if (d.voters.includes(i.voterId)) {
     return { ok: false, reason: 'already_voted', results: { counts: d.counts, total: totalOf(d.counts) } }
   }
+  const ipUsed = (d.ipCounts[i.ipHash] || 0) + 1
+  if (ipUsed > IP_VOTE_LIMIT) {
+    return { ok: false, reason: 'ip_limit', results: { counts: d.counts, total: totalOf(d.counts) } }
+  }
+  d.ipCounts[i.ipHash] = ipUsed
   d.voters.push(i.voterId)
   bump(d.counts, i.candidateId)
   bump(d.device, i.device)

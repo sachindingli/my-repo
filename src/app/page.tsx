@@ -38,6 +38,7 @@ const T = {
     refresh: 'ताज़ा करें',
     already: 'इस डिवाइस से पहले ही वोट दिया जा चुका है।',
     desktopBlocked: 'कंप्यूटर/लैपटॉप से वोट बंद है। कृपया अपने मोबाइल फ़ोन से वोट करें।',
+    ipLimit: 'इस नेटवर्क से बहुत वोट आ चुके हैं। कृपया बाद में या किसी और नेटवर्क से कोशिश करें।',
     genericErr: 'कुछ गड़बड़ हुई, फिर कोशिश करें।',
     networkErr: 'नेटवर्क की समस्या — कनेक्शन जाँचें।',
     disclaimer: 'अनौपचारिक जनमत संग्रह — यह आधिकारिक ग्राम पंचायत चुनाव नहीं है।',
@@ -79,6 +80,7 @@ const T = {
     refresh: 'Refresh',
     already: 'This device has already voted.',
     desktopBlocked: 'Voting from computer/laptop is disabled. Please vote from your mobile phone.',
+    ipLimit: 'Too many votes from this network already. Please try later or from another network.',
     genericErr: 'Something went wrong, please try again.',
     networkErr: 'Network problem — check your connection.',
     disclaimer: 'Unofficial community poll — this is not the official Gram Panchayat election.',
@@ -237,6 +239,8 @@ export default function Home() {
         setNotice(t.already)
       } else if (data.reason === 'desktop_blocked') {
         setNotice(t.desktopBlocked)
+      } else if (data.reason === 'ip_limit') {
+        setNotice(t.ipLimit)
       } else {
         setNotice(t.genericErr)
       }
